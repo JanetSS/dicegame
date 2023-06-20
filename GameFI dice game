@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DiceGame {
+    address public player;
+    uint public betAmount;
+    uint public totalAmount;
+    uint public winningAmount;
+    uint private constant MAX_ROLL = 6;
+
+    event BetPlaced(address indexed player, uint betAmount);
+    event GameResult(address indexed player, uint winningAmount);
+
+    constructor() {
+        player = msg.sender;
+    }
+
+    function placeBet(uint bet) external payable {
+        require(msg.value == bet, "Incorrect bet amount");
+        require(address(this).balance >= totalAmount + bet, "Insufficient contract balance");
+
+        betAmount = bet;
+        totalAmount += betAmount;
+
+        emit BetPlaced(msg.sender, betAmount);
+
+        rollDice();
+    }
+
+    function rollDice() private {
+        uint diceRoll = (uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty, player))) % MAX_ROLL) + 1;
+
+        if (diceRoll == MAX_ROLL) {
+            winningAmount = totalAmount;
+            payable(player).transfer(winningAmount);
+        }
+
+        totalAmount = 0;
+        betAmount = 0;
+
+        emit GameResult(player, winningAmount);
+
+        // Reset the game
+        player = msg.sender;
+        winningAmount = 0;
+    }
+}
